@@ -26,15 +26,18 @@ jobs:
 
       - name: Zip functions
         run: |
+          mkdir -p zips
           for fn in summarize-text summarize-url list-history; do
+            rm -rf dist/functions/$fn/shared dist/functions/$fn/node_modules
             mkdir -p dist/functions/$fn/shared
             cp -r dist/shared/* dist/functions/$fn/shared/
             cp -r node_modules dist/functions/$fn/
-            cd dist/functions/$fn
-            zip -r ../../../zips/$fn.zip .
-            cd ../../..
+            rm -f zips/$fn.zip
+            (
+              cd dist/functions/$fn
+              zip -r ../../../zips/$fn.zip .
+            )
           done
-          mkdir -p zips
         working-directory: backend
 
       - name: Configure AWS credentials
