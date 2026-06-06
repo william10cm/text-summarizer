@@ -1,0 +1,86 @@
+name: Deploy Summarizer
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-backend:
+    name: Deploy Lambda Functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install backend dependencies
+        run: npm install
+        working-directory: backend
+
+      - name: Compile TypeScript
+        run: npx tsc --outDir dist
+        working-directory: backend
+
+      - name: Zip functions
+        run: |
+          for fn in summarize-text summarize-url list-history; do
+            mkdir -p dist/functions/$fn/shared
+            cp -r dist/shared/* dist/functions/$fn/shared/
+            cp -r node_modules dist/functions/$fn/
+            cd dist/functions/$fn
+            zip -r ../../../zips/$fn.zip .
+            cd ../../..
+          done
+          mkdir -p zips
+        working-directory: backend
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy Lambda functions
+        run: |
+          aws lambda update-function-code --function-name summarizer-summarize-text --zip-file fileb://zips/summarize-text.zip
+          aws lambda update-function-code --function-name summarizer-summarize-url --zip-file fileb://zips/summarize-url.zip
+          aws lambda update-function-code --function-name summarizer-list-history --zip-file fileb://zips/list-history.zip
+        working-directory: backend
+
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install and build
+        run: |
+          npm install
+          npm run build
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Sync to S3
+        run: aws s3 sync dist/ s3://${{ secrets.FRONTEND_BUCKET_NAME }} --delete
+        working-directory: frontend
+
+      - name: Invalidate CloudFront cache
+        run: aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"

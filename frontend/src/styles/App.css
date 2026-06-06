@@ -1,0 +1,27 @@
+.app {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  
+  .app__header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  
+  .app__title {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--color-text);
+  }
+  
+  .app__title span {
+    color: var(--color-primary);
+  }
+  
+  .app__subtitle {
+    margin-top: 8px;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+  }
