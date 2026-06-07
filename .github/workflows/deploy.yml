@@ -26,9 +26,10 @@ jobs:
 
       - name: Bundle functions with esbuild
         run: |
+          npm install --save-dev esbuild
           mkdir -p zips
           for fn in summarize-text summarize-url list-history; do
-            npx esbuild functions/$fn/index.ts \
+            ./node_modules/.bin/esbuild functions/$fn/index.ts \
               --bundle \
               --platform=node \
               --target=node22 \
