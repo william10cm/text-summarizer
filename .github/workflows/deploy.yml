@@ -20,21 +20,25 @@ jobs:
         run: npm install
         working-directory: backend
 
-      - name: Compile TypeScript
-        run: npx tsc --outDir dist
+      - name: Type check
+        run: npx tsc --noEmit
         working-directory: backend
 
-      - name: Zip functions
+      - name: Bundle functions with esbuild
         run: |
-          for fn in summarize-text summarize-url list-history; do
-            mkdir -p dist/functions/$fn/shared
-            cp -r dist/shared/* dist/functions/$fn/shared/
-            cp -r node_modules dist/functions/$fn/
-            cd dist/functions/$fn
-            zip -r ../../../zips/$fn.zip .
-            cd ../../..
-          done
           mkdir -p zips
+          for fn in summarize-text summarize-url list-history; do
+            npx esbuild functions/$fn/index.ts \
+              --bundle \
+              --platform=node \
+              --target=node22 \
+              --format=cjs \
+              --external:@aws-sdk/* \
+              --outfile=build/$fn/index.js
+            cd build/$fn
+            zip -r ../../zips/$fn.zip index.js
+            cd ../..
+          done
         working-directory: backend
 
       - name: Configure AWS credentials

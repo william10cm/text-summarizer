@@ -77,9 +77,15 @@ ${pageText}`,
     }
     catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error';
-        const statusCode = message.includes('required') || message.includes('valid') || message.includes('extract')
-            ? 400 : 500;
-        return (0, utils_1.buildResponse)(statusCode, { error: message });
+        let userMessage = message;
+        if (message.includes('403') || message.includes('Forbidden')) {
+            userMessage = 'This website blocks external requests. Try a Wikipedia or news article instead.';
+        }
+        else if (message.includes('timeout') || message.includes('abort')) {
+            userMessage = 'The URL took too long to load. Try a different link.';
+        }
+        const statusCode = message.includes('required') || message.includes('valid') ? 400 : 500;
+        return (0, utils_1.buildResponse)(statusCode, { error: userMessage });
     }
 };
 exports.handler = handler;

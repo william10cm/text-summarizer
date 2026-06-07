@@ -1,21 +1,37 @@
 const { execSync } = require('child_process');
+const esbuild = require('esbuild');
 const fs = require('fs');
 const path = require('path');
 
 const functions = ['summarize-text', 'summarize-url', 'list-history'];
 const zipDir = path.join(__dirname, '../zips');
+const buildDir = path.join(__dirname, '../build');
 
 if (!fs.existsSync(zipDir)) fs.mkdirSync(zipDir);
 
-functions.forEach(fn => {
-  const zipPath = path.join(zipDir, `${fn}.zip`);
+async function run() {
+  for (const fn of functions) {
+    const outDir = path.join(buildDir, fn);
+    const entry = path.join(__dirname, '..', 'functions', fn, 'index.ts');
+    const outFile = path.join(outDir, 'index.js');
 
-  // Zip from inside the dist folder so paths are preserved correctly
-  const distPath = path.join(__dirname, '../dist');
+    await esbuild.build({
+      entryPoints: [entry],
+      bundle: true,
+      platform: 'node',
+      target: 'node22',
+      format: 'cjs',
+      outfile: outFile,
+      external: ['@aws-sdk/*'],
+    });
 
-  execSync(
-    `powershell Compress-Archive -Force -Path "${distPath}\\*" -DestinationPath "${zipPath}"`
-  );
+    const zipPath = path.join(zipDir, `${fn}.zip`);
+    execSync(
+      `powershell Compress-Archive -Force -Path "${outDir}\\*" -DestinationPath "${zipPath}"`
+    );
 
-  console.log(`✓ Zipped ${fn} → zips/${fn}.zip`);
-});
+    console.log(`✓ Bundled + zipped ${fn} → zips/${fn}.zip`);
+  }
+}
+
+run();
