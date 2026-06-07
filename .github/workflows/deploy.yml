@@ -25,21 +25,7 @@ jobs:
         working-directory: backend
 
       - name: Bundle functions with esbuild
-        run: |
-          npm install --save-dev esbuild
-          mkdir -p zips
-          for fn in summarize-text summarize-url list-history; do
-            ./node_modules/.bin/esbuild functions/$fn/index.ts \
-              --bundle \
-              --platform=node \
-              --target=node22 \
-              --format=cjs \
-              --external:@aws-sdk/* \
-              --outfile=build/$fn/index.js
-            cd build/$fn
-            zip -r ../../zips/$fn.zip index.js
-            cd ../..
-          done
+        run: npm run build
         working-directory: backend
 
       - name: Configure AWS credentials
