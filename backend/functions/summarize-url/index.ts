@@ -1,20 +1,12 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import fetch from 'node-fetch';
 import {
   buildResponse,
+  getAnthropicClient,
   validateUrl,
   saveSummaryToS3,
   SummaryRecord,
 } from '../../shared/utils';
-
-crypto.randomUUID();
-
-let client: Anthropic;
-function getClient() {
-  if (!client) client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-  return client;
-}
 
 async function fetchPageText(url: string): Promise<string> {
   const response = await fetch(url, {
@@ -57,7 +49,7 @@ export const handler = async (
     const url = validateUrl(body.url);
     const pageText = await fetchPageText(url);
 
-    const message = await getClient().messages.create({
+    const message = await getAnthropicClient().messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [{

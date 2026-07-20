@@ -1243,9 +1243,9 @@ function makeLogFn(fnLevel, logger, logLevel) {
     return logger[fnLevel].bind(logger);
   }
 }
-function loggerFor(client2) {
-  const logger = client2.logger;
-  const logLevel = client2.logLevel ?? "off";
+function loggerFor(client) {
+  const logger = client.logger;
+  const logLevel = client.logLevel ?? "off";
   if (!logger) {
     return noopLogger;
   }
@@ -1273,14 +1273,14 @@ var init_log = __esm({
       info: 400,
       debug: 500
     };
-    parseLogLevel = (maybeLevel, sourceName, client2) => {
+    parseLogLevel = (maybeLevel, sourceName, client) => {
       if (!maybeLevel) {
         return void 0;
       }
       if (hasOwn(levelNumbers, maybeLevel)) {
         return maybeLevel;
       }
-      loggerFor(client2).warn(`${sourceName} was set to ${JSON.stringify(maybeLevel)}, expected one of ${JSON.stringify(Object.keys(levelNumbers))}`);
+      loggerFor(client).warn(`${sourceName} was set to ${JSON.stringify(maybeLevel)}, expected one of ${JSON.stringify(Object.keys(levelNumbers))}`);
       return void 0;
     };
     noopLogger = {
@@ -1977,15 +1977,15 @@ var init_streaming = __esm({
     init_log();
     init_error();
     Stream = class _Stream {
-      constructor(iterator, controller, client2) {
+      constructor(iterator, controller, client) {
         this.iterator = iterator;
         _Stream_client.set(this, void 0);
         this.controller = controller;
-        __classPrivateFieldSet(this, _Stream_client, client2, "f");
+        __classPrivateFieldSet(this, _Stream_client, client, "f");
       }
-      static fromSSEResponse(response, controller, client2) {
+      static fromSSEResponse(response, controller, client) {
         let consumed = false;
-        const logger = client2 ? loggerFor(client2) : console;
+        const logger = client ? loggerFor(client) : console;
         async function* iterator() {
           if (consumed) {
             throw new AnthropicError("Cannot iterate over a consumed stream, use `.tee()` to split the stream.");
@@ -2031,13 +2031,13 @@ var init_streaming = __esm({
               controller.abort();
           }
         }
-        return new _Stream(iterator, controller, client2);
+        return new _Stream(iterator, controller, client);
       }
       /**
        * Generates a Stream from a newline-separated ReadableStream
        * where each item is a JSON value.
        */
-      static fromReadableStream(readableStream, controller, client2) {
+      static fromReadableStream(readableStream, controller, client) {
         let consumed = false;
         async function* iterLines() {
           const lineDecoder = new LineDecoder();
@@ -2074,7 +2074,7 @@ var init_streaming = __esm({
               controller.abort();
           }
         }
-        return new _Stream(iterator, controller, client2);
+        return new _Stream(iterator, controller, client);
       }
       [(_Stream_client = /* @__PURE__ */ new WeakMap(), Symbol.asyncIterator)]() {
         return this.iterator();
@@ -2176,11 +2176,11 @@ var init_streaming = __esm({
 });
 
 // node_modules/@anthropic-ai/sdk/internal/parse.mjs
-async function defaultParseResponse(client2, props) {
+async function defaultParseResponse(client, props) {
   const { response, requestLogID, retryOfRequestLogID, startTime } = props;
   const body = await (async () => {
     if (props.options.stream) {
-      loggerFor(client2).debug("response", response.status, response.url, response.headers, response.body);
+      loggerFor(client).debug("response", response.status, response.url, response.headers, response.body);
       if (props.options.__streamClass) {
         return props.options.__streamClass.fromSSEResponse(response, props.controller);
       }
@@ -2206,7 +2206,7 @@ async function defaultParseResponse(client2, props) {
     const text = await response.text();
     return text;
   })();
-  loggerFor(client2).debug(`[${requestLogID}] response parsed`, formatRequestDetails({
+  loggerFor(client).debug(`[${requestLogID}] response parsed`, formatRequestDetails({
     retryOfRequestLogID,
     url: response.url,
     status: response.status,
@@ -2238,17 +2238,17 @@ var init_api_promise = __esm({
     init_tslib();
     init_parse();
     APIPromise = class _APIPromise extends Promise {
-      constructor(client2, responsePromise, parseResponse = defaultParseResponse) {
+      constructor(client, responsePromise, parseResponse = defaultParseResponse) {
         super((resolve4) => {
           resolve4(null);
         });
         this.responsePromise = responsePromise;
         this.parseResponse = parseResponse;
         _APIPromise_client.set(this, void 0);
-        __classPrivateFieldSet(this, _APIPromise_client, client2, "f");
+        __classPrivateFieldSet(this, _APIPromise_client, client, "f");
       }
       _thenUnwrap(transform) {
-        return new _APIPromise(__classPrivateFieldGet(this, _APIPromise_client, "f"), this.responsePromise, async (client2, props) => addRequestID(transform(await this.parseResponse(client2, props), props), props.response));
+        return new _APIPromise(__classPrivateFieldGet(this, _APIPromise_client, "f"), this.responsePromise, async (client, props) => addRequestID(transform(await this.parseResponse(client, props), props), props.response));
       }
       /**
        * Gets the raw `Response` instance instead of parsing the response
@@ -2310,9 +2310,9 @@ var init_pagination = __esm({
     init_api_promise();
     init_values();
     AbstractPage = class {
-      constructor(client2, response, body, options) {
+      constructor(client, response, body, options) {
         _AbstractPage_client.set(this, void 0);
-        __classPrivateFieldSet(this, _AbstractPage_client, client2, "f");
+        __classPrivateFieldSet(this, _AbstractPage_client, client, "f");
         this.options = options;
         this.response = response;
         this.body = body;
@@ -2347,8 +2347,8 @@ var init_pagination = __esm({
       }
     };
     PagePromise = class extends APIPromise {
-      constructor(client2, request, Page2) {
-        super(client2, request, async (client3, props) => new Page2(client3, props.response, await defaultParseResponse(client3, props), props.options));
+      constructor(client, request, Page2) {
+        super(client, request, async (client2, props) => new Page2(client2, props.response, await defaultParseResponse(client2, props), props.options));
       }
       /**
        * Allow auto-paginating iteration on an unawaited list call, eg:
@@ -2365,8 +2365,8 @@ var init_pagination = __esm({
       }
     };
     Page = class extends AbstractPage {
-      constructor(client2, response, body, options) {
-        super(client2, response, body, options);
+      constructor(client, response, body, options) {
+        super(client, response, body, options);
         this.data = body.data || [];
         this.has_more = body.has_more || false;
         this.first_id = body.first_id || null;
@@ -2409,8 +2409,8 @@ var init_pagination = __esm({
       }
     };
     PageCursor = class extends AbstractPage {
-      constructor(client2, response, body, options) {
-        super(client2, response, body, options);
+      constructor(client, response, body, options) {
+        super(client, response, body, options);
         this.data = body.data || [];
         this.next_page = body.next_page || null;
       }
@@ -2599,8 +2599,8 @@ var APIResource;
 var init_resource = __esm({
   "node_modules/@anthropic-ai/sdk/core/resource.mjs"() {
     APIResource = class {
-      constructor(client2) {
-        this._client = client2;
+      constructor(client) {
+        this._client = client;
       }
     };
   }
@@ -4102,11 +4102,11 @@ var init_backoff = __esm({
 });
 
 // node_modules/@anthropic-ai/sdk/lib/helper-client.mjs
-function copyClientForHelper(client2, { authToken, helper }) {
+function copyClientForHelper(client, { authToken, helper }) {
   if (!authToken) {
     throw new AnthropicError(`copyClientForHelper: expected a non-empty authToken but received ${JSON.stringify(authToken)}`);
   }
-  const internal = client2;
+  const internal = client;
   const parentDefaults = internal._options.defaultHeaders;
   const parentAuthExtraHeaders = internal._authState?.extraHeaders;
   const inheritedAuthExtraHeaders = parentAuthExtraHeaders ? Object.fromEntries(Object.entries(parentAuthExtraHeaders).filter(([name]) => {
@@ -4118,10 +4118,10 @@ function copyClientForHelper(client2, { authToken, helper }) {
     parentDefaults,
     { "x-stainless-helper": helper }
   ]);
-  return client2.withOptions({
+  return client.withOptions({
     apiKey: null,
     authToken,
-    baseURL: client2.baseURL,
+    baseURL: client.baseURL,
     credentials: void 0,
     defaultHeaders
   });
@@ -4876,18 +4876,18 @@ var init_fs_util = __esm({
 
 // node_modules/@anthropic-ai/sdk/tools/agent-toolset/skills.mjs
 async function setupSkills(ctx) {
-  const { client: client2, sessionId } = ctx;
-  if (!client2 || !sessionId)
+  const { client, sessionId } = ctx;
+  if (!client || !sessionId)
     return async () => {
     };
-  const log = loggerFor(client2);
-  const session = await client2.beta.sessions.retrieve(sessionId);
+  const log = loggerFor(client);
+  const session = await client.beta.sessions.retrieve(sessionId);
   const skillsRoot = path3.resolve(ctx.workdir, "skills");
   const created = [];
   for (const skill of session.agent.skills) {
     try {
-      const versionId = await resolveSkillVersion(client2, skill.skill_id, skill.version);
-      const version = await client2.beta.skills.versions.retrieve(versionId, { skill_id: skill.skill_id });
+      const versionId = await resolveSkillVersion(client, skill.skill_id, skill.version);
+      const version = await client.beta.skills.versions.retrieve(versionId, { skill_id: skill.skill_id });
       let dirname4 = path3.basename(version.name.trim());
       if (dirname4 === "" || dirname4 === "." || dirname4 === "..")
         dirname4 = skill.skill_id;
@@ -4899,7 +4899,7 @@ async function setupSkills(ctx) {
         });
         continue;
       }
-      const resp = await client2.beta.skills.versions.download(versionId, { skill_id: skill.skill_id });
+      const resp = await client.beta.skills.versions.download(versionId, { skill_id: skill.skill_id });
       await fs2.rm(dest, { recursive: true, force: true });
       await fs2.mkdir(dest, { recursive: true, mode: DIR_CREATE_MODE });
       created.push(dest);
@@ -4926,11 +4926,11 @@ async function setupSkills(ctx) {
     }
   };
 }
-async function resolveSkillVersion(client2, skillId, version) {
+async function resolveSkillVersion(client, skillId, version) {
   if (/^\d+$/.test(version))
     return version;
   let newest;
-  for await (const v of client2.beta.skills.versions.list(skillId)) {
+  for await (const v of client.beta.skills.versions.list(skillId)) {
     if (/^\d+$/.test(v.version) && (newest === void 0 || BigInt(v.version) > BigInt(newest))) {
       newest = v.version;
     }
@@ -5628,9 +5628,9 @@ ${out}`;
 });
 
 // node_modules/@anthropic-ai/sdk/lib/environments/worker.mjs
-async function forceStop(client2, work, log, requestOptions) {
+async function forceStop(client, work, log, requestOptions) {
   try {
-    await client2.beta.environments.work.stop(
+    await client.beta.environments.work.stop(
       work.id,
       { environment_id: work.environment_id, force: true },
       // Caller's headers pass through; the helper-tag header is on the scoped
@@ -5644,12 +5644,12 @@ async function forceStop(client2, work, log, requestOptions) {
     }
   }
 }
-async function heartbeatLoop(client2, work, ctrl, logger, requestOptions) {
+async function heartbeatLoop(client, work, ctrl, logger, requestOptions) {
   let intervalMs = HEARTBEAT_DEFAULT_MS;
   let last = NO_HEARTBEAT_SENTINEL;
   const beat = async () => {
     try {
-      const resp = await client2.beta.environments.work.heartbeat(work.id, { environment_id: work.environment_id, expected_last_heartbeat: last }, { ...requestOptions, headers: buildHeaders([requestOptions?.headers]), signal: ctrl.signal });
+      const resp = await client.beta.environments.work.heartbeat(work.id, { environment_id: work.environment_id, expected_last_heartbeat: last }, { ...requestOptions, headers: buildHeaders([requestOptions?.headers]), signal: ctrl.signal });
       last = resp.last_heartbeat;
       if (resp.ttl_seconds > 0) {
         intervalMs = Math.max(1e3, Math.min(resp.ttl_seconds * 1e3 / 2, HEARTBEAT_DEFAULT_MS));
@@ -7890,9 +7890,9 @@ var init_BetaToolRunner = __esm({
     init_CompactionControl();
     init_stainless_helper_header();
     BetaToolRunner = class {
-      constructor(client2, params, options) {
+      constructor(client, params, options) {
         _BetaToolRunner_instances.add(this);
-        this.client = client2;
+        this.client = client;
         _BetaToolRunner_consumed.set(this, false);
         _BetaToolRunner_mutated.set(this, false);
         _BetaToolRunner_state.set(this, void 0);
@@ -11227,9 +11227,9 @@ __export(index_exports, {
   handler: () => handler
 });
 module.exports = __toCommonJS(index_exports);
-init_sdk();
 
 // shared/utils.ts
+init_sdk();
 var import_client_s3 = require("@aws-sdk/client-s3");
 function buildResponse(statusCode, body) {
   return {
@@ -11252,6 +11252,13 @@ function validateTextInput(text) {
   }
   return text.trim();
 }
+var anthropicClient;
+function getAnthropicClient() {
+  if (!anthropicClient) {
+    anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  }
+  return anthropicClient;
+}
 var s3 = new import_client_s3.S3Client({ region: process.env.AWS_REGION || "us-east-1" });
 async function saveSummaryToS3(record) {
   const bucket = process.env.S3_BUCKET_NAME;
@@ -11265,18 +11272,12 @@ async function saveSummaryToS3(record) {
 }
 
 // functions/summarize-text/index.ts
-crypto.randomUUID();
-var client;
-function getClient() {
-  if (!client) client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return client;
-}
 var handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return buildResponse(200, {});
   try {
     const body = JSON.parse(event.body || "{}");
     const text = validateTextInput(body.text);
-    const message = await getClient().messages.create({
+    const message = await getAnthropicClient().messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 1024,
       messages: [{

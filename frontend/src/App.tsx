@@ -3,7 +3,6 @@ import InputPanel from './components/InputPanel';
 import ResultCard from './components/ResultCard';
 import HistoryPanel from './components/HistoryPanel';
 import { summarizeText, summarizeUrl } from './api/summarizer';
-import './styles/global.css';
 import './styles/App.css';
 
 type InputType = 'text' | 'url';

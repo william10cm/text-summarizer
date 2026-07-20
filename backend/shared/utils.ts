@@ -1,3 +1,4 @@
+import Anthropic from '@anthropic-ai/sdk';
 import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 
 export function buildResponse(statusCode: number, body: object) {
@@ -39,6 +40,17 @@ export function buildResponse(statusCode: number, body: object) {
   }
 
   
+
+let anthropicClient: Anthropic | undefined;
+
+export function getAnthropicClient(): Anthropic {
+  if (!anthropicClient) {
+    anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+  }
+
+  return anthropicClient;
+}
+
 
 const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 

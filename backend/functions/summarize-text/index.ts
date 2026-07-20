@@ -1,19 +1,11 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import {
   buildResponse,
+  getAnthropicClient,
   validateTextInput,
   saveSummaryToS3,
   SummaryRecord,
 } from '../../shared/utils';
-
-crypto.randomUUID();
-
-let client: Anthropic;
-function getClient() {
-  if (!client) client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-  return client;
-}
 
 export const handler = async (
   event: APIGatewayProxyEvent
@@ -24,7 +16,7 @@ export const handler = async (
     const body = JSON.parse(event.body || '{}');
     const text = validateTextInput(body.text);
 
-    const message = await getClient().messages.create({
+    const message = await getAnthropicClient().messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [{
